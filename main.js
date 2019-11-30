@@ -1,6 +1,6 @@
 // let neurons = []
 let layer = null
-let pressedObject = null
+let clickedObject = null
 let prevMouseX = 0
 let prevMouseY = 0
 
@@ -16,7 +16,7 @@ function draw() {
 	background(51)
 	layer.update()
 	for (let neuron of layer.neuronList) {
-		if (neuron == pressedObject) {
+		if (neuron == clickedObject) {
 			neuron.position = createVector(mouseX, mouseY)
 		}
 		neuron.update()
@@ -28,6 +28,7 @@ function draw() {
 	// 	neuron.draw()
 	// }
 	
+	//console.log(clickedObject)
 	//console.log("diff: " + (mouseX-prevMouseX) + ", " + (mouseY-prevMouseY))
 	afterDraw()
 }
@@ -40,28 +41,30 @@ function afterDraw() {
 function mousePressed() {
 	for (let neuron of layer.neuronList) {
 		if (neuron.isMouseover()) {
-			pressedObject = neuron
+			clickedObject = neuron
 			return
 		}
 		
 	}
 
 	if (layer.addButton.isMouseover()) {
-		pressedObject = layer.addButton
+		clickedObject = layer.addButton
 		layer.addButton.onClick()
 		return
 	}
 
 	if (layer.isMouseover()) {
-		pressedObject = layer
+		clickedObject = layer
+		layer.onClick()
 		return
 	}
 
-	pressedObject = null
+	// didnt click any object
+	clickedObject = null
 }
 
 function mouseReleased() {
-	pressedObject = null
+	clickedObject = null
 }
 
 function isMouseoverCircle(x, y, radius) {
@@ -76,6 +79,7 @@ class Layer {
 		this.position = createVector(width/2,0)
 		this.color = color(0,200,250, 150)
 		this.addButton = new Button(this, this.position.x, this.height/2)
+		this.ratio = 0
 
 	}
 
@@ -90,8 +94,12 @@ class Layer {
 			&& mouseX <= this.position.x + this.width/2
 	}
 
+	onClick() {
+
+	}
+
 	update() {
-		const dx = (mouseIsPressed && pressedObject == this && this.isMouseover()) ? (mouseX-prevMouseX) : 0
+		const dx = (mouseIsPressed && clickedObject == this && this.isMouseover()) ? (mouseX-prevMouseX) : 0
 		this.position.add(dx, 0)
 
 		for (let neuron of this.neuronList) {
@@ -102,12 +110,14 @@ class Layer {
 
 	draw() {
 		const isEmpty = this.neuronList.length < 1
+		const width_ = this.width * this.ratio
+		this.ratio = (this.ratio < 0.9) ? 0.01 + this.ratio*1.2 : (this.ratio > 1) ? this.ratio*0.995 : 1
 		push()
 		translate(this.position.x, this.position.y)
 		// Rectangle
 		fill(this.color)
 		strokeWeight(this.isMouseover() ? 3 : 1)
-		rect(-this.width/2, 0, this.width, this.height)
+		rect(-width_/2, 0, width_, this.height)
 		// Anchor
 		strokeWeight(1)
 		fill('red')
@@ -117,9 +127,11 @@ class Layer {
 		text(("empty? " + isEmpty), 10-this.width/2, 15)
 		pop()
 
-		this.addButton.draw()
-		for (let neuron of this.neuronList) {
-			neuron.draw()
+		if (this.ratio == 1) {
+			this.addButton.draw()
+			for (let neuron of this.neuronList) {
+				neuron.draw()
+			}	
 		}
 	}
 }
@@ -129,6 +141,7 @@ class Button {
 		this.position = createVector(x,y)
 		this.radius = 25
 		this.layer = layer
+		this.ratio = 0
 	}
 
 	onClick() {
@@ -145,14 +158,17 @@ class Button {
 
 	draw() {
 		const isMouseover = isMouseoverCircle(this.position.x, this.position.y, this.radius)
+		const radius = this.radius * this.ratio
+		this.ratio = (this.ratio < 0.9) ? 0.01 + this.ratio*1.2 : (this.ratio > 1) ? this.ratio*0.995 : this.ratio
+
 		push()
 		translate(this.position)
 		strokeWeight(isMouseover ? 3 : 1)
-		ellipse(0,0, this.radius*2)
+		ellipse(0,0, radius*2)
 		textAlign(CENTER,CENTER)
-		textSize(this.radius*1.5)
+		textSize(radius*1.5)
 		strokeWeight(1)
-		text("+", 0, this.radius/12.5)
+		text("+", 0, radius/12.5)
 		pop()
 	}
 }
@@ -162,6 +178,7 @@ class Neuron {
 		this.position = createVector(150,200)
 		this.radius = 25
 		this.color = 'green'
+		this.ratio = 0
 	}
 
 	isMouseover() {
@@ -173,9 +190,14 @@ class Neuron {
 	}
 
 	draw() {
+		const isMouseover = this.isMouseover()
+		const radius = this.radius*2 * this.ratio
+		this.ratio = (this.ratio < 0.9) ? 0.01 + this.ratio*1.2 : (this.ratio > 1) ? this.ratio*0.995 : this.ratio
+		
 		push()
+		strokeWeight(isMouseover ? 3 : 1)
 		fill(this.color)
-		ellipse(this.position.x, this.position.y, this.radius*2)
+		ellipse(this.position.x, this.position.y, radius)
 		pop()
 	}
 }
