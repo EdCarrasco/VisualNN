@@ -5,6 +5,13 @@ let clickedObject = null
 let prevMouseX = 0
 let prevMouseY = 0
 
+let xhttp = new XMLHttpRequest()
+xhttp.open('GET', 'https://raw.githubusercontent.com/EdCarrasco/VisualNN/master/test.txt', false)
+xhttp.onreadystatechange = function() {
+	console.log(xhttp.response)
+}
+xhttp.send(null)
+
 
 function setup() {
 	createCanvas(640, 480)
@@ -118,7 +125,7 @@ class Layer {
 	}
 
 	update() {
-		const dx = (mouseIsPressed && clickedObject == this && this.isMouseover()) ? (mouseX-prevMouseX) : 0
+		const dx = (mouseIsPressed && clickedObject == this) ? (mouseX-prevMouseX) : 0
 		this.position.add(dx, 0)
 
 		for (let neuron of this.neuronList) {
@@ -186,8 +193,10 @@ class Button {
 
 		push()
 		translate(this.position)
+		// Circle
 		strokeWeight(isMouseover ? 3 : 1)
 		ellipse(0,0, radius*2)
+		// Text
 		textAlign(CENTER,CENTER)
 		textSize(radius*1.5)
 		strokeWeight(1)
@@ -227,11 +236,14 @@ class Neuron {
 		ellipse(0, 0, radius)
 
 		// Text
-		fill(0)
-		textAlign(CENTER,CENTER)
-		textSize(radius*0.3)
-		strokeWeight(1)
-		text(this.value, 0, 0)
+		if (this.ratio > 0.1) {
+			fill(0)
+			textAlign(CENTER,CENTER)
+			textSize(radius*0.3)
+			strokeWeight(1)
+			text(this.value, 0, 0)	
+		}
+		
 		pop()
 	}
 }
