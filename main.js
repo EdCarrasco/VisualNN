@@ -190,7 +190,9 @@ class Layer {
 		ellipse(0, 0, 10)
 		// Text
 		fill(0)
-		text(("type: " + this.type), 10-this.width/2, 15)
+		if (this.ratio == 1) {
+			text(("type: " + this.type), 10-this.width/2, 15)
+		}
 		pop()
 
 		if (this.ratio == 1) {
@@ -230,13 +232,20 @@ class Button {
 
 		push()
 		translate(this.position)
+		// Circle shadow
+		noStroke()
+		fill(0,150)
+		ellipse(2,4, radius*2)
 		// Circle
+		fill(200)
+		stroke(50)
 		strokeWeight(isMouseover ? 3 : 1)
 		ellipse(0,0, radius*2)
 		// Text
 		textAlign(CENTER,CENTER)
 		textSize(radius*1.5)
 		strokeWeight(1)
+		fill(51)
 		text("+", 0, radius/12.5)
 		pop()
 	}
@@ -268,20 +277,27 @@ class Neuron {
 		
 		push()
 		translate(this.position)
+		// Circle shadow
+		noStroke()
+		fill(0, 50)
+		ellipse(2,4, radius)
 		// Circle
-		strokeWeight(isMouseover ? 3 : 1)
+		stroke(0)
+		strokeWeight(isMouseover ? 2 : 0)
 		fill(this.color)
 		ellipse(0, 0, radius)
-
+		pop()
 		// Text
+		
 		if (this.ratio > 0.1) {
+			push()
+			translate(this.position)
 			fill(0)
 			textAlign(CENTER,CENTER)
 			textSize(radius*0.3)
 			strokeWeight(1)
 			text(this.value, 0, 0)	
+			pop()
 		}
-		
-		pop()
 	}
 }
