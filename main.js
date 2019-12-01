@@ -1,27 +1,53 @@
 NEURON_COLOR = 'orange'
 
+let inputX = []
+let inputY = []
+let dataReceived = false
+let inputLayerExists = false
+
 let layers = []
 let clickedObject = null
 let prevMouseX = 0
 let prevMouseY = 0
 
 let xhttp = new XMLHttpRequest()
-xhttp.open('GET', 'https://raw.githubusercontent.com/EdCarrasco/VisualNN/master/test.txt', false)
 xhttp.onreadystatechange = function() {
-	console.log(xhttp.response)
+	if (xhttp.readyState === 4 && xhttp.status === 200) {
+		let lines = xhttp.response.split('\n')
+		for (let line of lines) {
+			let strings = line.split(' ')
+			let sample = []
+			for (let i = 0; i < strings.length; i++) {
+				let number = parseInt(strings[i])
+				if (i == 0) {
+					inputY.push(number)
+				} else {
+					sample.push(number)
+				}
+				
+			}
+			inputX.push(sample)
+		}
+		console.log(inputX)
+		dataReceived = true
+	}
 }
+xhttp.open('GET', 'https://raw.githubusercontent.com/EdCarrasco/VisualNN/master/data1.txt', false)
 xhttp.send(null)
 
 
 function setup() {
 	createCanvas(640, 480)
 	// neurons.push(new Neuron())
-	layers.push(new Layer(width/4))
-	layers.push(new Layer(3*width/4))
+	layers.push(new Layer(width*0.4))
+	layers.push(new Layer(width*0.8))
 }
 
 function draw() {
 	background(51)
+	if (dataReceived && !inputLayerExists) {
+		createInputLayer()
+	}
 	// Update phase
 	for (let layer of layers) {
 		layer.update()
@@ -34,6 +60,16 @@ function draw() {
 	// Final phase
 	prevMouseX = mouseX
 	prevMouseY = mouseY
+}
+
+function createInputLayer() {
+	let inputLayer = new Layer(width*0.2, {type:'input'})
+	layers.push(inputLayer)
+	const numFeatures = inputX.length >= 1 ? inputX[0].length : 0
+	for (let i = 1; i <= numFeatures; i++) {
+		inputLayer.createNeuron({value:i})
+	}
+	inputLayerExists = true
 }
 
 function mousePressed() {
@@ -85,7 +121,8 @@ function getNextRatio(ratio) {
 
 // ==================================================================
 class Layer {
-	constructor(x) {
+	constructor(x, options={}) {
+		this.type = options.type || 'hidden'
 		this.neuronList = []
 		this.width = 100
 		this.height = height
@@ -96,14 +133,14 @@ class Layer {
 		this.addButton = new Button(this, this.position.x, this.height-30, this.radius)
 	}
 
-	createNeuron() {
+	createNeuron(options={}) {
 		if (this.neuronList.length >= 6) {
 			console.log("Layer::createNeuron() Cannot have more than 6 neurons on a layer.")
 			return
 		}
 		let padding = 5
 		let neuronHeight = (this.neuronList.length >= 1) ? (this.neuronList[this.neuronList.length-1].position.y + this.radius + padding) : this.height/2
-		let neuron = new Neuron(this.position.x, neuronHeight, this.radius)
+		let neuron = new Neuron(this.position.x, neuronHeight, this.radius, options)
 		this.moveNeurons(- this.radius - padding)
 		this.neuronList.push(neuron)
 	}
@@ -153,7 +190,7 @@ class Layer {
 		ellipse(0, 0, 10)
 		// Text
 		fill(0)
-		text(("empty? " + isEmpty), 10-this.width/2, 15)
+		text(("type: " + this.type), 10-this.width/2, 15)
 		pop()
 
 		if (this.ratio == 1) {
@@ -207,12 +244,13 @@ class Button {
 
 // ==================================================================
 class Neuron {
-	constructor(x, y, radius) {
+	constructor(x, y, radius, options={}) {
 		this.position = createVector(x,y)
 		this.radius = radius
 		this.color = NEURON_COLOR
 		this.ratio = 0
-		this.value = Math.random().toFixed(2)
+		this.value = options.value || Math.random().toFixed(2)
+		
 	}
 
 	isMouseover() {
