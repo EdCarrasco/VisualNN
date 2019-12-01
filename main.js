@@ -1,11 +1,11 @@
 NEURON_COLOR = 'orange'
 
+let neuralNetwork = null
 let inputX = []
 let inputY = []
 let dataReceived = false
 let inputLayerExists = false
 
-let layers = []
 let clickedObject = null
 let prevMouseX = 0
 let prevMouseY = 0
@@ -32,15 +32,20 @@ xhttp.onreadystatechange = function() {
 		dataReceived = true
 	}
 }
-xhttp.open('GET', 'https://raw.githubusercontent.com/EdCarrasco/VisualNN/master/data1.txt', false)
+const fileURL = 'https://raw.githubusercontent.com/EdCarrasco/VisualNN/master/data1.txt'
+xhttp.open('GET', fileURL)
 xhttp.send(null)
 
 
 function setup() {
 	createCanvas(640, 480)
-	// neurons.push(new Neuron())
-	layers.push(new Layer(width*0.4))
-	layers.push(new Layer(width*0.8))
+	neuralNetwork = new NeuralNetwork()
+	
+	neuralNetwork.addLayer(new Layer(width*0.4))
+	neuralNetwork.addLayer(new Layer(width*0.6))
+
+	outputLayer = new Layer(width*0.9, {type: 'output'})
+	neuralNetwork.addLayer(outputLayer)
 }
 
 function draw() {
@@ -49,14 +54,16 @@ function draw() {
 		createInputLayer()
 	}
 	// Update phase
-	for (let layer of layers) {
-		layer.update()
-	}
+	neuralNetwork.update()
+	neuralNetwork.draw()
+	// for (let layer of layers) {
+	// 	layer.update()
+	// }
 
-	// Draw phase
-	for (let i = layers.length-1; i >= 0; i--) {
-		layers[i].draw()
-	}
+	// // Draw phase
+	// for (let i = layers.length-1; i >= 0; i--) {
+	// 	layers[i].draw()
+	// }
 	// Final phase
 	prevMouseX = mouseX
 	prevMouseY = mouseY
@@ -64,17 +71,18 @@ function draw() {
 
 function createInputLayer() {
 	let inputLayer = new Layer(width*0.2, {type:'input'})
-	layers.push(inputLayer)
+	neuralNetwork.addLayer(inputLayer)
+
 	const numFeatures = inputX.length >= 1 ? inputX[0].length : 0
-	for (let i = 1; i <= numFeatures; i++) {
-		inputLayer.createNeuron({value:i})
+	for (let i = 0; i < numFeatures; i++) {
+		inputLayer.createNeuron({value:inputX[0][i]})
 	}
 	inputLayerExists = true
 }
 
 function mousePressed() {
 	// Check neurons
-	for (let layer of layers) {
+	for (let layer of neuralNetwork.layers) {
 		for (let neuron of layer.neuronList) {
 			if (neuron.isMouseover()) {
 				clickedObject = neuron
@@ -82,26 +90,19 @@ function mousePressed() {
 			}
 			
 		}
-	}
 
-	// Check buttons
-	for (let layer of layers) {
-		if (layer.addButton.isMouseover()) {
+		if (layer.addButton && layer.addButton.isMouseover()) {
 			clickedObject = layer.addButton
 			layer.addButton.onClick()
 			return
 		}
-	}
 
-	// Check layers
-	for (let layer of layers) {
 		if (layer.isMouseover()) {
 			clickedObject = layer
 			layer.onClick()
 			return
 		}	
 	}
-	
 
 	// didnt click any object
 	clickedObject = null
@@ -120,6 +121,58 @@ function getNextRatio(ratio) {
 }
 
 // ==================================================================
+class NeuralNetwork {
+	constructor() {
+		this.layers = []
+		this.hasInputLayer = false
+		this.hasOutputLayer = false
+	}
+
+	addLayer(layer) {
+		switch(layer.type) {
+			case 'input':
+				if (!this.hasInputLayer) {
+					this.layers.unshift(layer)
+					this.hasInputLayer = true
+				} else {
+					console.warn("NeuralNetwork::addLayer() -- can only have 1 input layer")
+				}
+				break
+			case 'output':
+				if (!this.hasOutputLayer) {
+					this.layers.push(layer)
+					this.hasOutputLayer = true
+				} else {
+					console.warn("NeuralNetwork::addLayer() -- can only have 1 output layer")
+				}
+				break
+			case 'hidden':
+				if (this.hasOutputLayer) {
+					const i = this.layers.length - 2
+					this.layers.splice(i, 0, layer)
+				} else {
+					this.layers.push(layer)
+				}
+				break
+			default:
+				console.log("NeuralNetwork::addLayer() -- wrong layer type: " + layer.type)
+		}
+	}
+
+	update() {
+		for (let i = this.layers.length-1; i >= 0; i--) {
+			this.layers[i].update()
+		}
+	}
+
+	draw() {
+		for (let i = this.layers.length-1; i >= 0; i--) {
+			this.layers[i].draw()
+		}
+	}
+}
+
+// ==================================================================
 class Layer {
 	constructor(x, options={}) {
 		this.type = options.type || 'hidden'
@@ -130,7 +183,9 @@ class Layer {
 		this.color = color(0,200,250, 150)
 		this.ratio = 0
 		this.radius = 25
-		this.addButton = new Button(this, this.position.x, this.height-30, this.radius)
+
+		this.addButton = this.type == 'input' ? null : new LayerAddButton(this, this.position.x, this.height-30, this.radius)
+		this.createNeuron()
 	}
 
 	createNeuron(options={}) {
@@ -171,7 +226,9 @@ class Layer {
 			// 	neuron.position = createVector(mouseX, mouseY)
 			// }
 		}
-		this.addButton.update(dx, 0)
+		if (this.addButton) {
+			this.addButton.update(dx, 0)
+		}
 	}
 
 	draw() {
@@ -196,7 +253,9 @@ class Layer {
 		pop()
 
 		if (this.ratio == 1) {
-			this.addButton.draw()
+			if (this.addButton) {
+				this.addButton.draw()
+			}
 			for (let i = this.neuronList.length-1; i >= 0; i--) {
 				this.neuronList[i].draw()
 			}
@@ -205,7 +264,7 @@ class Layer {
 }
 
 // ==================================================================
-class Button {
+class LayerAddButton {
 	constructor(layer, x, y, radius) {
 		this.position = createVector(x,y)
 		this.radius = radius
